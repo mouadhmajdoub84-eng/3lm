@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8
+    container_name: 3lm_db
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DB}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - 3lm_network
+
+  backend:
+    build: ./backend
+    container_name: 3lm_backend
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_HOST: ${MYSQL_HOST}
+      MYSQL_PORT: ${MYSQL_PORT}
+      MYSQL_DB: ${MYSQL_DB}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    volumes:
+      - ./backend/.env:/app/.env
+    networks:
+      - 3lm_network
+
+  frontend:
+    build: .
+    container_name: 3lm_frontend
+    ports:
+      - "80:80"
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - 3lm_network
+
+volumes:
+  mysql_data:
+
+networks:
+  3lm_network:
+    driver: bridge
